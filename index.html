@@ -1,751 +1,646 @@
-<!DOCTYPE html>
-<html lang="hy">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ԲԻԼԵԹ — Տոմսերի առցանց վաճառք</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Armenian:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface2: #1c1c27;
-    --border: #2a2a3d;
-    --accent: #e8c547;
-    --accent2: #ff6b6b;
-    --accent3: #6bc5ff;
-    --text: #f0eeea;
-    --text-dim: #7a7890;
-    --text-mid: #b0adc5;
-    --success: #4ade80;
-    --radius: 12px;
-  }
+import { useState, useEffect, useCallback } from "react";
+import { BookOpen, Users, ArrowLeftRight, Sparkles, Plus, Search, X, ChevronRight, RotateCcw, LogOut, CheckCircle, Clock, BookMarked, AlertCircle } from "lucide-react";
 
+const GOOGLE_FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:wght@300;400;500&display=swap');`;
+
+const STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'IBM Plex Mono', monospace;
-    background: var(--bg);
-    color: var(--text);
+  body, #root { height: 100%; }
+  .lib-app {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: #F7F3EC;
     min-height: 100vh;
-    overflow-x: hidden;
+    color: #2C1810;
   }
-
-  /* NOISE OVERLAY */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.025;
-    pointer-events: none;
-    z-index: 9999;
+  .lib-sidebar {
+    width: 220px; min-height: 100vh; background: #1C3A2B;
+    padding: 0; display: flex; flex-direction: column; flex-shrink: 0;
   }
-
-  /* HEADER */
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(10,10,15,0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 64px;
+  .lib-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
-
-  .logo {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-weight: 900;
-    letter-spacing: -1px;
-    color: var(--accent);
-    text-decoration: none;
+  .lib-logo h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: #E8D8B0; font-size: 20px; font-weight: 700; line-height: 1.2;
   }
-
-  .logo span { color: var(--text); }
-
-  nav { display: flex; gap: 8px; align-items: center; }
-
-  .nav-btn {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-mid);
-    padding: 7px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 12px;
-    letter-spacing: 0.5px;
-    transition: all 0.2s;
+  .lib-logo p { color: rgba(232,216,176,0.5); font-size: 11px; margin-top: 3px; letter-spacing: 0.5px; }
+  .lib-nav { padding: 16px 12px; flex: 1; }
+  .lib-nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: 8px; cursor: pointer; color: rgba(232,216,176,0.65);
+    font-size: 13.5px; font-weight: 400; transition: all 0.15s; margin-bottom: 2px;
+    border: none; background: transparent; width: 100%; text-align: left;
   }
-
-  .nav-btn:hover, .nav-btn.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(232,197,71,0.06);
+  .lib-nav-item:hover { background: rgba(255,255,255,0.06); color: #E8D8B0; }
+  .lib-nav-item.active { background: rgba(232,216,176,0.12); color: #E8D8B0; font-weight: 500; }
+  .lib-nav-item svg { opacity: 0.8; flex-shrink: 0; }
+  .lib-main { flex: 1; padding: 32px 36px; overflow-y: auto; }
+  .lib-header { margin-bottom: 28px; }
+  .lib-header h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 26px; font-weight: 700; color: #1C3A2B;
   }
-
-  .cart-btn {
-    background: var(--accent);
-    border: none;
-    color: #000;
-    padding: 8px 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-    position: relative;
+  .lib-header p { color: #7A6A55; font-size: 13.5px; margin-top: 4px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card {
+    background: white; border-radius: 12px; padding: 16px 18px;
+    border: 1px solid #E8E0D0;
   }
-
-  .cart-btn:hover { background: #f5d55a; transform: translateY(-1px); }
-
-  .cart-count {
-    background: var(--accent2);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    border-radius: 50%;
-    width: 18px; height: 18px;
-    display: flex; align-items: center; justify-content: center;
-    position: absolute;
-    top: -6px; right: -6px;
+  .stat-card .label { font-size: 11px; color: #9C8B76; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 600; color: #1C3A2B; font-family: 'Playfair Display', serif; }
+  .stat-card .sub { font-size: 12px; color: #A89880; margin-top: 3px; }
+  .card { background: white; border-radius: 12px; border: 1px solid #E8E0D0; overflow: hidden; }
+  .card-header {
+    padding: 16px 20px; border-bottom: 1px solid #F0E8DC;
+    display: flex; align-items: center; justify-content: space-between;
   }
-
-  /* HERO */
-  .hero {
-    padding: 80px 32px 60px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .hero-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(232,197,71,0.1);
-    border: 1px solid rgba(232,197,71,0.3);
-    color: var(--accent);
-    padding: 6px 14px;
-    border-radius: 100px;
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-  }
-
-  .hero-tag::before {
-    content: '';
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-  }
-
-  h1 {
-    font-family: 'Noto Serif Armenian', serif;
-    font-size: clamp(36px, 5vw, 72px);
-    font-weight: 900;
-    line-height: 1.05;
-    letter-spacing: -2px;
-    margin-bottom: 20px;
-  }
-
-  h1 em {
-    font-style: normal;
-    color: var(--accent);
-    position: relative;
-  }
-
-  h1 em::after {
-    content: '';
-    position: absolute;
-    bottom: 4px; left: 0; right: 0;
-    height: 3px;
-    background: var(--accent);
-    border-radius: 2px;
-  }
-
-  .hero-sub {
-    color: var(--text-dim);
-    font-size: 14px;
-    max-width: 500px;
-    line-height: 1.7;
-    margin-bottom: 40px;
-  }
-
-  /* SEARCH BAR */
+  .card-header h3 { font-size: 15px; font-weight: 600; color: #2C1810; }
+  .card-body { padding: 0; }
   .search-bar {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 60px;
-    flex-wrap: wrap;
+    display: flex; align-items: center; gap: 8px;
+    background: #F7F3EC; border: 1px solid #E0D5C5; border-radius: 8px;
+    padding: 8px 12px; margin: 16px 20px;
   }
-
-  .search-input {
-    flex: 1;
-    min-width: 200px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 14px 18px;
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s;
+  .search-bar input {
+    border: none; background: transparent; outline: none;
+    font-size: 13.5px; color: #2C1810; width: 100%;
+    font-family: 'Source Serif 4', serif;
   }
-
-  .search-input:focus { border-color: var(--accent); }
-  .search-input::placeholder { color: var(--text-dim); }
-
-  .filter-select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 14px 18px;
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 13px;
-    outline: none;
-    cursor: pointer;
-    transition: border-color 0.2s;
+  .search-bar svg { color: #A89880; flex-shrink: 0; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+    cursor: pointer; font-family: 'Source Serif 4', serif;
+    transition: all 0.15s; border: none; font-weight: 500;
   }
-
-  .filter-select:focus { border-color: var(--accent); }
-
-  .search-btn {
-    background: var(--accent);
-    border: none;
-    color: #000;
-    padding: 14px 28px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    transition: all 0.2s;
+  .btn-primary { background: #1C3A2B; color: #E8D8B0; }
+  .btn-primary:hover { background: #254D39; }
+  .btn-danger { background: #C0392B; color: white; }
+  .btn-danger:hover { background: #A93226; }
+  .btn-ghost { background: transparent; color: #7A6A55; border: 1px solid #E0D5C5; }
+  .btn-ghost:hover { background: #F7F3EC; }
+  .btn-success { background: #1C7A4A; color: white; }
+  .btn-success:hover { background: #166040; }
+  .table-row {
+    display: grid; padding: 12px 20px; border-bottom: 1px solid #F5F0E8;
+    align-items: center; font-size: 13.5px;
   }
-
-  .search-btn:hover { background: #f5d55a; }
-
-  /* SECTIONS */
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
+  .table-row:last-child { border-bottom: none; }
+  .table-row:hover { background: #FDFAF5; }
+  .table-head {
+    display: grid; padding: 10px 20px;
+    background: #F7F3EC; font-size: 11px; font-weight: 500;
+    color: #9C8B76; letter-spacing: 0.5px; text-transform: uppercase;
+    border-bottom: 1px solid #EDE5D5;
   }
-
-  .section-title {
-    font-family: 'Noto Serif Armenian', serif;
-    font-size: 22px;
-    font-weight: 700;
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500;
   }
-
-  .section-title span {
-    color: var(--accent);
-    font-size: 13px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 400;
-    margin-left: 12px;
+  .badge-green { background: #E8F5ED; color: #1A6B3A; }
+  .badge-amber { background: #FFF3DC; color: #7A5200; }
+  .badge-red { background: #FDECEA; color: #C0392B; }
+  .badge-gray { background: #F0EBE3; color: #7A6A55; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
   }
+  .modal {
+    background: white; border-radius: 16px; width: 480px; max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;
+  }
+  .modal-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid #F0E8DC;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h3 { font-family: 'Playfair Display', serif; font-size: 18px; color: #1C3A2B; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid #F0E8DC; display: flex; justify-content: flex-end; gap: 8px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: #7A6A55; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-input {
+    width: 100%; padding: 9px 12px; border: 1px solid #E0D5C5; border-radius: 8px;
+    font-size: 13.5px; color: #2C1810; outline: none; font-family: 'Source Serif 4', serif;
+    background: #FDFAF7; transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: #1C3A2B; background: white; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ai-area {
+    background: linear-gradient(135deg, #F0F7F4 0%, #E8F0ED 100%);
+    border: 1px solid #C0D9CC; border-radius: 12px; padding: 16px;
+    font-size: 13.5px; color: #2C4A3A; line-height: 1.65; min-height: 80px;
+  }
+  .ai-loading { display: flex; align-items: center; gap: 8px; color: #6A9A80; font-style: italic; font-size: 13px; }
+  .empty-state { text-align: center; padding: 48px 24px; color: #9C8B76; }
+  .empty-state svg { opacity: 0.3; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+  select.form-input { cursor: pointer; }
+  textarea.form-input { resize: vertical; min-height: 70px; }
+`;
 
-  .see-all {
-    font-size: 12px;
-    color: var(--text-dim);
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-mid);
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.2s;
-  } 
-<nav>
-  <div class="logo" onclick="showPage('shop')">AVELON</div>
-  <div class="nav-right">
-    <button class="cart-btn" onclick="showPage('cart')">🛒 Զամբ. <span class="cart-count" id="cart-count">0</span></button>
-  </div>
-</nav>
- 
-<!-- SHOP -->
-<div class="page active" id="page-shop">
-  <div class="hero">
-    <p class="hero-tag">Avelon Collections</p>
-    <h1>Ամեն ինչ<br><span>մեկ տեղում</span></h1>
-    <p>Հագուստ, էլեկտրոնիկա, սնունդ, կահույք — Avelon-ում ամեն ինչ կա։</p>
-    <div class="hero-btns">
-      <button class="btn-primary" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Ապրանքներ տեսնել</button>
-    </div>
-  </div>
-  <div class="filters">
-    <button class="filter-btn active" onclick="filterP('all',this)">Բոլորը</button>
-    <button class="filter-btn" onclick="filterP('Հագուստ',this)">Հագուստ</button>
-    <button class="filter-btn" onclick="filterP('Էլեկտրոնիկա',this)">Էլեկտրոնիկա</button>
-    <button class="filter-btn" onclick="filterP('Սնունդ',this)">Սնունդ</button>
-    <button class="filter-btn" onclick="filterP('Կահույք',this)">Կահույք</button>
-    <button class="filter-btn" onclick="filterP('Սպորտ',this)">Սպորտ</button>
-    <div class="search-wrap"><input type="text" placeholder="Որոնել..." oninput="searchP(this.value)"></div>
-  </div>
-  <div class="products-section" id="products">
-    <p class="section-title">Ապրանքներ</p>
-    <div class="products-grid" id="pgrid"></div>
-  </div>
-</div>
- 
-<!-- PRODUCT MODAL -->
-<div class="overlay" id="prod-overlay" style="display:none" onclick="if(event.target===this)closeProdModal()">
-  <div class="modal">
-    <button class="modal-close" onclick="closeProdModal()">✕</button>
-    <div id="prod-modal-body"></div>
-  </div>
-</div>
- 
-<!-- CART -->
-<div class="page" id="page-cart">
-  <div class="cart-page">
-    <h2>Իմ Զամբյուղ</h2>
-    <div id="cart-container"></div>
-  </div>
-</div>
- 
-<!-- CHECKOUT -->
-<div class="page" id="page-checkout">
-  <div class="checkout-page">
-    <h2>Վճարում</h2>
-    <div class="order-mini" id="checkout-mini"></div>
-    <p class="sec-label">Առաքման տվյալներ</p>
-    <div class="form-grid">
-      <div class="fg"><label>Անուն</label><input id="fn" placeholder="Անի"></div>
-      <div class="fg"><label>Ազգանուն</label><input id="fl" placeholder="Հակոբյան"></div>
-      <div class="fg full"><label>Հասցե</label><input id="fa" placeholder="Երևան, Աբովյան 15"></div>
-      <div class="fg"><label>Քաղաք</label><input id="fc" placeholder="Երևան" value="Երևան"></div>
-      <div class="fg"><label>Հեռախոս</label><input id="fp" placeholder="+374 XX XXX XXX"></div>
-    </div>
-    <p class="sec-label">Վճարման եղանակ</p>
-    <div class="pay-opts">
-      <div class="pay-opt active" onclick="selPay(this)">💳 Քարտ</div>
-      <div class="pay-opt" onclick="selPay(this)">💵 Կանխիկ</div>
-      <div class="pay-opt" onclick="selPay(this)">📱 IDram</div>
-    </div>
-    <div id="card-fields">
-      <div class="form-grid">
-        <div class="fg full"><label>Քարտի համար</label><input placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)"></div>
-        <div class="fg"><label>Ժամկետ</label><input placeholder="MM/YY" maxlength="5"></div>
-        <div class="fg"><label>CVV</label><input placeholder="123" maxlength="3"></div>
-      </div>
-    </div>
-    <button class="checkout-btn" onclick="placeOrder()">Հաստ. պատվ. →</button>
-  </div>
-</div>
- 
-<!-- SUCCESS -->
-<div class="page" id="page-success">
-  <div class="success-page">
-    <div style="font-size:3.5rem;margin-bottom:1rem">✅</div>
-    <h2>Պատվերն ընդ.!</h2>
-    <p>Ձեր QR կոդն ու ID-ն ստորև են։ Courier-ը scan կանի — բոլոր տվյալները կտեսնի։</p>
-    <div class="order-card" id="succ-card">
-      <div class="order-card-header">
-        <div>
-          <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;font-weight:700">Պատ. ID</div>
-          <div class="order-id" id="succ-id">—</div>
-        </div>
-        <div id="succ-sbadge"></div>
-      </div>
-      <div class="order-info-row"><span class="order-info-label">Հաճախ.</span><span class="order-info-val" id="succ-name">—</span></div>
-      <div class="order-info-row"><span class="order-info-label">Հեռ.</span><span class="order-info-val" id="succ-phone">—</span></div>
-      <div class="order-info-row"><span class="order-info-label">Հասցե</span><span class="order-info-val" id="succ-addr">—</span></div>
-      <div class="order-info-row"><span class="order-info-label">Ապր.</span><span class="order-info-val" id="succ-items">—</span></div>
-      <div class="order-info-row"><span class="order-info-label">Ընդամ.</span><span class="order-info-val" id="succ-total" style="color:var(--accent);font-family:'Playfair Display',serif;font-size:1.1rem">—</span></div>
-      <div class="qr-section">
-        <p>Scan արեք — courier-ը կտեսնի ամբողջ պատվերը</p>
-        <div id="order-qr-canvas"></div>
-        <p style="font-family:monospace;font-size:0.85rem;color:var(--accent);font-weight:700;letter-spacing:2px" id="succ-qr-txt">—</p>
-      </div>
-    </div>
-    <button class="btn-primary" onclick="showPage('shop')">Շարուն. գնումները</button>
-  </div>
-</div>
- 
-<!-- ADMIN GATE -->
-<div class="page" id="page-admin-gate">
-  <div class="admin-login">
-    <div style="font-size:2.5rem;margin-bottom:1rem">🔐</div>
-    <h2>Admin</h2>
-    <p>Մուտքի ծածկագիրը</p>
-    <input type="password" id="apass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn-primary" style="width:100%;margin-top:0.5rem" onclick="doLogin()">Մուտք</button>
-  </div>
-</div>
- 
-<!-- ADMIN -->
-<div class="page" id="page-admin">
-  <div class="admin-page">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:0.5rem">
-      <div><h2>Admin Panel</h2><p style="color:var(--text2);font-size:0.9rem">Avelon կառ. վահ.</p></div>
-      <button class="btn-sm btn-danger" onclick="doLogout()">Ելք</button>
-    </div>
-    <div class="admin-tabs">
-      <button class="admin-tab active" onclick="swTab('dash',this)">Վահ.</button>
-      <button class="admin-tab" onclick="swTab('scan',this)">📷 Scan</button>
-      <button class="admin-tab" onclick="swTab('ords',this)">Պատ.</button>
-      <button class="admin-tab" onclick="swTab('prods',this)">Ապ.</button>
-      <button class="admin-tab" onclick="swTab('addp',this)">+ Ավ.</button>
-    </div>
- 
-    <div class="ap active" id="ap-dash">
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Վաճ.</div><div class="stat-val" id="sv">0 ֏</div></div>
-        <div class="stat-card"><div class="stat-label">Ապ.</div><div class="stat-val" id="sp2">0</div></div>
-        <div class="stat-card"><div class="stat-label">Պատ.</div><div class="stat-val" id="so">0</div></div>
-        <div class="stat-card"><div class="stat-label">Սպ.</div><div class="stat-val" id="spnd" style="color:var(--warn)">0</div></div>
-      </div>
-      <p class="section-title">Վերջ. պատ.</p>
-      <table class="at"><thead><tr><th>ID</th><th>Հաճ.</th><th>Ապ.</th><th>Գ.</th><th>Կ.</th></tr></thead>
-      <tbody id="dash-orders"></tbody></table>
-    </div>
- 
-    <div class="ap" id="ap-scan">
-      <p style="color:var(--text2);margin-bottom:1.5rem;font-size:0.95rem">Մուտք. ID կամ scan QR — courier-ը կտեսնի հաճ. բոլոր տվ.</p>
-      <div class="scan-bar">
-        <input id="scan-input" placeholder="AV-XXXX..." oninput="liveSearch(this.value)" onkeydown="if(event.key==='Enter')lookupOrder()">
-        <button class="btn-primary" onclick="lookupOrder()">Գտնել →</button>
-      </div>
-      <div id="scan-suggestions"></div>
-      <div id="scan-result"></div>
-    </div>
- 
-    <div class="ap" id="ap-ords">
-      <div style="overflow-x:auto">
-        <table class="at"><thead><tr><th>ID</th><th>Հաճ.</th><th>Հեռ.</th><th>Ապ.</th><th>Գ.</th><th>Կ.</th><th>Գ.</th></tr></thead>
-        <tbody id="admin-ords"></tbody></table>
-      </div>
-    </div>
- 
-    <div class="ap" id="ap-prods">
-      <table class="at"><thead><tr><th>Նկ.</th><th>Անուն</th><th>Կատ.</th><th>Գին</th><th>Ջնջ.</th></tr></thead>
-      <tbody id="admin-prods"></tbody></table>
-    </div>
- 
-    <div class="ap" id="ap-addp">
-      <div class="add-form">
-        <h3>Ավ. Ապրանք</h3>
-        <div class="upload-area">
-          <input type="file" accept="image/*" onchange="handleUpload(this)">
-          <div id="uph"><div style="font-size:2rem;margin-bottom:8px">📷</div><p style="color:var(--accent);font-size:0.9rem;font-weight:500">Սեղ. կամ Drag & Drop</p></div>
-          <img id="img-preview">
-        </div>
-        <div class="fg"><label>URL</label><input id="niurl" placeholder="https://..." oninput="prevUrl(this)"></div>
-        <div class="fg"><label>Անուն</label><input id="nname" placeholder="iPhone 15 Pro"></div>
-        <div class="fg"><label>Կատ.</label><select id="ncat"><option>Հագուստ</option><option>Էլեկտրոնիկա</option><option>Սնունդ</option><option>Կահույք</option><option>Սպորտ</option><option>Այլ</option></select></div>
-        <div class="fg"><label>Գին (AMD)</label><input type="number" id="nprice" placeholder="25000"></div>
-        <div class="fg"><label>Emoji</label><input id="nicon" placeholder="📱" maxlength="4"></div>
-        <div class="fg"><label>Նկ.</label><input id="ndesc" placeholder="Կ. նկ."></div>
-        <button class="btn-primary" style="margin-top:0.5rem" onclick="addProduct()">Ավ. ➕</button>
-      </div>
-    </div>
-  </div>
-</div>
- 
-<!-- SECRET DOT -->
-<div id="secret-dot" title="" onclick="secretClick()"></div>
- 
-<div id="toast"></div>
- 
-<script>
-var products=[
-  {id:1,name:'Nike Air Max 270',cat:'Հագուստ',price:45000,icon:'👟',img:'',desc:'Կոմֆ. կրոսovki',badge:'sale'},
-  {id:2,name:'Samsung Galaxy S24',cat:'Էլ.',price:320000,icon:'📱',img:'',desc:'128GB, 6.2"',badge:'new'},
-  {id:3,name:'Adidas Hoodie',cat:'Հագուստ',price:28000,icon:'🧥',img:'',desc:'Ձ. hoodie'},
-  {id:4,name:'MacBook Air M3',cat:'Էլ.',price:750000,icon:'💻',img:'',desc:'13", 8GB',badge:'new'},
-  {id:5,name:'Ararat Cognac 5*',cat:'Սնունդ',price:12000,icon:'🥃',img:'',desc:'500ml'},
-  {id:6,name:'IKEA Kallax',cat:'Կահույք',price:55000,icon:'🪑',img:'',desc:'Դ. 2x4'},
-  {id:7,name:'Protein Whey Gold',cat:'Սպ.',price:18000,icon:'💪',img:'',desc:'1kg, Choc.'},
-  {id:8,name:'Zara Summer Dress',cat:'Հագուստ',price:35000,icon:'👗',img:'',desc:'Summer coll.'},
-  {id:9,name:'Sony WH-1000XM5',cat:'Էլ.',price:180000,icon:'🎧',img:'',desc:'Noise canc.',badge:'sale'},
+const initialBooks = [
+  { id: "b1", title: "Հայոց Պատմություն", author: "Թովմա Արծրունի", genre: "Պատմություն", year: 1982, totalCopies: 3, availableCopies: 3, isbn: "978-5-8103-0186-1" },
+  { id: "b2", title: "Մheri Durn", author: "Հովհ. Թումանյան", genre: "Բանաստեղծություն", year: 1966, totalCopies: 5, availableCopies: 4, isbn: "978-5-8499-0033-2" },
+  { id: "b3", title: "Խաղաղ Դոն", author: "Միխայիլ Շոլոխով", genre: "Վեպ", year: 1975, totalCopies: 2, availableCopies: 2, isbn: "978-5-699-20727-1" },
 ];
-var cart=[],orders=[],nextId=10,nextOrd=1000;
-var curFil='all',curSearch='',upImg='';
-var dotClicks=0,dotTimer=null;
- 
-/* SECRET DOT — 3 quick clicks */
-function secretClick(){
-  dotClicks++;
-  clearTimeout(dotTimer);
-  dotTimer=setTimeout(function(){dotClicks=0;},1200);
-  if(dotClicks>=3){dotClicks=0;showPage('admin-gate');}
+
+const initialMembers = [
+  { id: "m1", name: "Անի Հովհաննիսյան", email: "ani@example.am", phone: "077 123456", joinDate: "2024-03-15" },
+  { id: "m2", name: "Արամ Պետրոսյան", email: "aram@example.am", phone: "093 654321", joinDate: "2024-05-20" },
+];
+
+const initialBorrowings = [];
+
+function genId() { return Math.random().toString(36).slice(2, 9); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function dueDate() { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); }
+function isOverdue(due, returned) { return !returned && new Date(due) < new Date(); }
+function formatDate(d) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("hy-AM", { day: "2-digit", month: "short", year: "numeric" });
 }
- 
-function showPage(n){
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('page-'+n).classList.add('active');
-  if(n==='cart')renderCart();
-  if(n==='admin')renderAdmin();
-  if(n==='checkout')renderCheckout();
-  window.scrollTo(0,0);
+
+export default function LibraryApp() {
+  const [tab, setTab] = useState("dashboard");
+  const [books, setBooks] = useState(initialBooks);
+  const [members, setMembers] = useState(initialMembers);
+  const [borrowings, setBorrowings] = useState(initialBorrowings);
+  const [loaded, setLoaded] = useState(false);
+
+  // Modals
+  const [showBookModal, setShowBookModal] = useState(false);
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [showBorrowModal, setShowBorrowModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+
+  // Search
+  const [bookSearch, setBookSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+
+  // AI Rec
+  const [recMemberId, setRecMemberId] = useState("");
+  const [recText, setRecText] = useState("");
+  const [recLoading, setRecLoading] = useState(false);
+
+  // Load from storage
+  useEffect(() => {
+    async function load() {
+      try {
+        const b = await window.storage.get("lib_books");
+        if (b) setBooks(JSON.parse(b.value));
+        const m = await window.storage.get("lib_members");
+        if (m) setMembers(JSON.parse(m.value));
+        const br = await window.storage.get("lib_borrowings");
+        if (br) setBorrowings(JSON.parse(br.value));
+      } catch {}
+      setLoaded(true);
+    }
+    load();
+  }, []);
+
+  // Save to storage
+  useEffect(() => { if (loaded) window.storage.set("lib_books", JSON.stringify(books)).catch(()=>{}); }, [books, loaded]);
+  useEffect(() => { if (loaded) window.storage.set("lib_members", JSON.stringify(members)).catch(()=>{}); }, [members, loaded]);
+  useEffect(() => { if (loaded) window.storage.set("lib_borrowings", JSON.stringify(borrowings)).catch(()=>{}); }, [borrowings, loaded]);
+
+  // Stats
+  const totalBooks = books.reduce((s, b) => s + b.totalCopies, 0);
+  const borrowedBooks = books.reduce((s, b) => s + (b.totalCopies - b.availableCopies), 0);
+  const activeBorrowings = borrowings.filter(b => !b.returnDate);
+  const overdueBorrowings = activeBorrowings.filter(b => isOverdue(b.dueDate, b.returnDate));
+
+  // Book form
+  const [bookForm, setBookForm] = useState({ title: "", author: "", genre: "", year: "", totalCopies: "1", isbn: "" });
+  function saveBook() {
+    if (!bookForm.title || !bookForm.author) return;
+    const copies = parseInt(bookForm.totalCopies) || 1;
+    setBooks(prev => [...prev, { id: genId(), ...bookForm, year: parseInt(bookForm.year) || 0, totalCopies: copies, availableCopies: copies }]);
+    setBookForm({ title: "", author: "", genre: "", year: "", totalCopies: "1", isbn: "" });
+    setShowBookModal(false);
+  }
+
+  // Member form
+  const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "" });
+  function saveMember() {
+    if (!memberForm.name) return;
+    setMembers(prev => [...prev, { id: genId(), ...memberForm, joinDate: today() }]);
+    setMemberForm({ name: "", email: "", phone: "" });
+    setShowMemberModal(false);
+  }
+
+  // Borrow form
+  const [borrowForm, setBorrowForm] = useState({ bookId: "", memberId: "" });
+  function saveBorrow() {
+    if (!borrowForm.bookId || !borrowForm.memberId) return;
+    setBorrowings(prev => [...prev, { id: genId(), ...borrowForm, checkoutDate: today(), dueDate: dueDate(), returnDate: null }]);
+    setBooks(prev => prev.map(b => b.id === borrowForm.bookId ? { ...b, availableCopies: b.availableCopies - 1 } : b));
+    setBorrowForm({ bookId: "", memberId: "" });
+    setShowBorrowModal(false);
+  }
+
+  // Return
+  const [returnId, setReturnId] = useState("");
+  function doReturn() {
+    if (!returnId) return;
+    const borrow = borrowings.find(b => b.id === returnId);
+    if (!borrow) return;
+    setBorrowings(prev => prev.map(b => b.id === returnId ? { ...b, returnDate: today() } : b));
+    setBooks(prev => prev.map(b => b.id === borrow.bookId ? { ...b, availableCopies: b.availableCopies + 1 } : b));
+    setReturnId("");
+    setShowReturnModal(false);
+  }
+
+  // AI Recommendations
+  async function getRecommendations() {
+    if (!recMemberId) return;
+    const member = members.find(m => m.id === recMemberId);
+    if (!member) return;
+    const memberBorrows = borrowings.filter(b => b.memberId === recMemberId);
+    const borrowedTitles = memberBorrows.map(b => {
+      const bk = books.find(x => x.id === b.bookId);
+      return bk ? `"${bk.title}" (${bk.genre})` : null;
+    }).filter(Boolean);
+    const allBooksList = books.map(b => `"${b.title}" by ${b.author} (${b.genre})`).join(", ");
+    const prompt = borrowedTitles.length > 0
+      ? `Դուք գրադարանավար եք: ${member.name} անդամն արդեն կարդացել է ${borrowedTitles.join(", ")}: Հաշվի առնելով դա, խորհուրդ տվեք 3 գիրք մեր ֆոնդից (${allBooksList}), կամ ընդհանուր: Հայերեն պատասխանեք, կարճ բացատրությամբ:`
+      : `Դուք գրադարանավար եք: ${member.name} անդամի համար, ում պատմությունը հայտնի չէ, խորհուրդ տվեք 3 հետաքրքիր գիրք ֆոնդից (${allBooksList}) կամ ընդհանուր: Հայերեն:`;
+    setRecLoading(true);
+    setRecText("");
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+      });
+      const data = await res.json();
+      const txt = data.content?.map(c => c.text || "").join("") || "Չհաջողվեց ստանալ պատասխան:";
+      setRecText(txt);
+    } catch { setRecText("Սխալ: Խնդրում ենք կրկին փորձել:"); }
+    setRecLoading(false);
+  }
+
+  const filteredBooks = books.filter(b =>
+    b.title.toLowerCase().includes(bookSearch.toLowerCase()) ||
+    b.author.toLowerCase().includes(bookSearch.toLowerCase()) ||
+    b.genre.toLowerCase().includes(bookSearch.toLowerCase())
+  );
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+    m.email.toLowerCase().includes(memberSearch.toLowerCase())
+  );
+
+  function getBookTitle(id) { return books.find(b => b.id === id)?.title || "—"; }
+  function getMemberName(id) { return members.find(m => m.id === id)?.name || "—"; }
+
+  return (
+    <>
+      <style>{GOOGLE_FONTS + STYLES}</style>
+      <div className="lib-app" style={{ display: "flex" }}>
+        {/* Sidebar */}
+        <div className="lib-sidebar">
+          <div className="lib-logo">
+            <h1>📚 Գրադարան</h1>
+            <p>ԿԱՌԱՎԱՐՄԱՆ ՀԱՄԱԿԱՐԳ</p>
+          </div>
+          <nav className="lib-nav">
+            {[
+              { id: "dashboard", icon: <BookMarked size={15}/>, label: "Վահանակ" },
+              { id: "books", icon: <BookOpen size={15}/>, label: "Գրքեր" },
+              { id: "members", icon: <Users size={15}/>, label: "Անդամներ" },
+              { id: "borrowings", icon: <ArrowLeftRight size={15}/>, label: "Վարձույթ" },
+              { id: "recommend", icon: <Sparkles size={15}/>, label: "Խորհուրդ" },
+            ].map(n => (
+              <button key={n.id} className={`lib-nav-item ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
+                {n.icon} {n.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Main */}
+        <div className="lib-main">
+
+          {/* DASHBOARD */}
+          {tab === "dashboard" && (
+            <>
+              <div className="lib-header">
+                <h2>Բարի գալուստ</h2>
+                <p>Ձեր գրադարանի ամփոփ վիճակը</p>
+              </div>
+              <div className="stat-grid">
+                {[
+                  { label: "Ընդամենը Գրքեր", value: books.length, sub: `${totalBooks} օրինակ` },
+                  { label: "Անդամներ", value: members.length, sub: "Ակտիվ" },
+                  { label: "Վարձույթ", value: activeBorrowings.length, sub: "Ակտիվ" },
+                  { label: "Ժամկետանց", value: overdueBorrowings.length, sub: "Ուշացած" },
+                ].map((s, i) => (
+                  <div className="stat-card" key={i}>
+                    <div className="label">{s.label}</div>
+                    <div className="value" style={{ color: i === 3 && s.value > 0 ? "#C0392B" : "#1C3A2B" }}>{s.value}</div>
+                    <div className="sub">{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="card">
+                  <div className="card-header"><h3>Ակտիվ վարձույթներ</h3></div>
+                  {activeBorrowings.length === 0 ? (
+                    <div className="empty-state"><BookOpen size={32}/><p>Վարձույթ չկա</p></div>
+                  ) : (
+                    <div>
+                      {activeBorrowings.slice(0, 5).map(b => (
+                        <div key={b.id} style={{ padding: "10px 16px", borderBottom: "1px solid #F5F0E8", fontSize: 13 }}>
+                          <div style={{ fontWeight: 500, marginBottom: 2 }}>{getBookTitle(b.bookId)}</div>
+                          <div style={{ color: "#9C8B76", display: "flex", justifyContent: "space-between" }}>
+                            <span>{getMemberName(b.memberId)}</span>
+                            <span className={`badge ${isOverdue(b.dueDate) ? "badge-red" : "badge-amber"}`}>
+                              {isOverdue(b.dueDate) ? "Ուշ" : formatDate(b.dueDate)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card">
+                  <div className="card-header"><h3>Արագ գործողություններ</h3></div>
+                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { label: "➕ Ավելացնել գիրք", action: () => setShowBookModal(true) },
+                      { label: "👤 Գրանցել անդամ", action: () => setShowMemberModal(true) },
+                      { label: "📤 Տալ վարձույթ", action: () => setShowBorrowModal(true) },
+                      { label: "📥 Ընդունել վերադարձ", action: () => setShowReturnModal(true) },
+                    ].map((a, i) => (
+                      <button key={i} className="btn btn-ghost" style={{ justifyContent: "flex-start", padding: "10px 14px" }} onClick={a.action}>
+                        {a.label} <ChevronRight size={14} style={{ marginLeft: "auto" }}/>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* BOOKS */}
+          {tab === "books" && (
+            <>
+              <div className="lib-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div><h2>Գրքեր</h2><p>{books.length} վերնագիր · {totalBooks} ընդամենը օրինակ</p></div>
+                <button className="btn btn-primary" onClick={() => setShowBookModal(true)}><Plus size={14}/> Ավելացնել</button>
+              </div>
+              <div className="card">
+                <div className="search-bar">
+                  <Search size={14}/><input placeholder="Փնտրել ըստ վերնագրի, հեղինակի, ժանրի…" value={bookSearch} onChange={e => setBookSearch(e.target.value)}/>
+                  {bookSearch && <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setBookSearch("")}><X size={12}/></button>}
+                </div>
+                <div className="table-head" style={{ gridTemplateColumns: "2fr 1.5fr 1fr 0.5fr 0.5fr 0.7fr" }}>
+                  <span>Վերնագիր</span><span>Հեղինակ</span><span>Ժանր</span><span>Տարի</span><span>Ընդ.</span><span>Հասանելի</span>
+                </div>
+                {filteredBooks.length === 0 && <div className="empty-state"><BookOpen size={32}/><p>Գրքեր չեն գտնվել</p></div>}
+                {filteredBooks.map(b => (
+                  <div key={b.id} className="table-row" style={{ gridTemplateColumns: "2fr 1.5fr 1fr 0.5fr 0.5fr 0.7fr" }}>
+                    <span style={{ fontWeight: 500 }}>{b.title}</span>
+                    <span style={{ color: "#5A4A38" }}>{b.author}</span>
+                    <span><span className="badge badge-gray">{b.genre}</span></span>
+                    <span style={{ color: "#9C8B76" }}>{b.year || "—"}</span>
+                    <span>{b.totalCopies}</span>
+                    <span><span className={`badge ${b.availableCopies === 0 ? "badge-red" : b.availableCopies < b.totalCopies ? "badge-amber" : "badge-green"}`}>{b.availableCopies}</span></span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* MEMBERS */}
+          {tab === "members" && (
+            <>
+              <div className="lib-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div><h2>Անդամներ</h2><p>{members.length} գրանցված անդամ</p></div>
+                <button className="btn btn-primary" onClick={() => setShowMemberModal(true)}><Plus size={14}/> Գրանցել</button>
+              </div>
+              <div className="card">
+                <div className="search-bar">
+                  <Search size={14}/><input placeholder="Փնտրել ըստ անուն, էլ. փոստ…" value={memberSearch} onChange={e => setMemberSearch(e.target.value)}/>
+                  {memberSearch && <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMemberSearch("")}><X size={12}/></button>}
+                </div>
+                <div className="table-head" style={{ gridTemplateColumns: "2fr 2fr 1.5fr 1fr 1fr" }}>
+                  <span>Անուն</span><span>Էլ. փոստ</span><span>Հեռախոս</span><span>Անդամ</span><span>Վարձ.</span>
+                </div>
+                {filteredMembers.length === 0 && <div className="empty-state"><Users size={32}/><p>Անդամներ չեն գտնվել</p></div>}
+                {filteredMembers.map(m => {
+                  const mb = borrowings.filter(b => b.memberId === m.id && !b.returnDate).length;
+                  return (
+                    <div key={m.id} className="table-row" style={{ gridTemplateColumns: "2fr 2fr 1.5fr 1fr 1fr" }}>
+                      <span style={{ fontWeight: 500 }}>{m.name}</span>
+                      <span style={{ color: "#7A8AA0" }}>{m.email || "—"}</span>
+                      <span style={{ color: "#7A6A55" }}>{m.phone || "—"}</span>
+                      <span style={{ color: "#9C8B76", fontSize: 12 }}>{formatDate(m.joinDate)}</span>
+                      <span><span className={`badge ${mb > 0 ? "badge-amber" : "badge-green"}`}>{mb} գիրք</span></span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* BORROWINGS */}
+          {tab === "borrowings" && (
+            <>
+              <div className="lib-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div><h2>Վարձույթ</h2><p>{activeBorrowings.length} ակտիվ · {overdueBorrowings.length} ուշացած</p></div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-primary" onClick={() => setShowBorrowModal(true)}><Plus size={14}/> Տալ</button>
+                  <button className="btn btn-success" onClick={() => setShowReturnModal(true)}><RotateCcw size={14}/> Ընդունել</button>
+                </div>
+              </div>
+              <div className="card">
+                <div className="table-head" style={{ gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr" }}>
+                  <span>Գիրք</span><span>Անդամ</span><span>Վերցնելու</span><span>Վերջնաժամ</span><span>Կարգ.</span>
+                </div>
+                {borrowings.length === 0 && <div className="empty-state"><ArrowLeftRight size={32}/><p>Վարձույթ չկա</p></div>}
+                {[...borrowings].reverse().map(b => (
+                  <div key={b.id} className="table-row" style={{ gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr" }}>
+                    <span style={{ fontWeight: 500 }}>{getBookTitle(b.bookId)}</span>
+                    <span style={{ color: "#5A4A38" }}>{getMemberName(b.memberId)}</span>
+                    <span style={{ color: "#9C8B76", fontSize: 12 }}>{formatDate(b.checkoutDate)}</span>
+                    <span style={{ fontSize: 12 }}>
+                      {b.returnDate ? <span className="badge badge-green"><CheckCircle size={10}/> Վերադ.</span>
+                        : isOverdue(b.dueDate) ? <span className="badge badge-red"><AlertCircle size={10}/> Ուշ</span>
+                        : <span className="badge badge-amber"><Clock size={10}/> {formatDate(b.dueDate)}</span>}
+                    </span>
+                    <span style={{ color: "#9C8B76", fontSize: 12 }}>{b.returnDate ? formatDate(b.returnDate) : "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* RECOMMENDATIONS */}
+          {tab === "recommend" && (
+            <>
+              <div className="lib-header">
+                <h2>Խորհուրդ AI-ով</h2>
+                <p>Ընտրեք անդամ, AI-ն կխորհուրդ տա գրքեր</p>
+              </div>
+              <div className="card" style={{ padding: 24, maxWidth: 560 }}>
+                <div className="form-group">
+                  <label>Անդամ</label>
+                  <select className="form-input" value={recMemberId} onChange={e => { setRecMemberId(e.target.value); setRecText(""); }}>
+                    <option value="">— Ընտրել անդամ —</option>
+                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+                {recMemberId && (
+                  <div style={{ marginBottom: 16, background: "#F7F3EC", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#7A6A55" }}>
+                    {(() => {
+                      const mb = borrowings.filter(b => b.memberId === recMemberId);
+                      if (mb.length === 0) return "Անդամն առայժմ որևէ գիրք չի վերցրել:";
+                      const titles = mb.map(b => getBookTitle(b.bookId)).join(", ");
+                      return `Կարդացած: ${titles}`;
+                    })()}
+                  </div>
+                )}
+                <button className="btn btn-primary" onClick={getRecommendations} disabled={!recMemberId || recLoading} style={{ marginBottom: 16 }}>
+                  <Sparkles size={14}/> {recLoading ? "Բեռնվում է…" : "Ստանալ խորհուրդ"}
+                </button>
+                {(recText || recLoading) && (
+                  <div className="ai-area">
+                    {recLoading ? <div className="ai-loading"><Sparkles size={14}/>AI-ն մտածում է…</div> : recText}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+
+      {/* ADD BOOK MODAL */}
+      {showBookModal && (
+        <div className="modal-overlay" onClick={() => setShowBookModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Ավելացնել Գիրք</h3>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setShowBookModal(false)}><X size={18}/></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group"><label>Վերնագիր *</label><input className="form-input" value={bookForm.title} onChange={e => setBookForm(p => ({ ...p, title: e.target.value }))} placeholder="Գրքի վերնագիրը"/></div>
+              <div className="form-group"><label>Հեղինակ *</label><input className="form-input" value={bookForm.author} onChange={e => setBookForm(p => ({ ...p, author: e.target.value }))} placeholder="Հեղինակի անունը"/></div>
+              <div className="form-row">
+                <div className="form-group"><label>Ժանր</label>
+                  <select className="form-input" value={bookForm.genre} onChange={e => setBookForm(p => ({ ...p, genre: e.target.value }))}>
+                    <option value="">Ընտրել</option>
+                    {["Վեպ","Պատմություն","Բանաստեղծություն","Գիտ. Ֆանտ.","Կենսագրություն","Ինքնաճանաչ.","Երեխ.","Փիլիսոփ.","Այլ"].map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="form-group"><label>Հրատ. Տարի</label><input className="form-input" type="number" value={bookForm.year} onChange={e => setBookForm(p => ({ ...p, year: e.target.value }))} placeholder="2024"/></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label>Օրինակների Քանակ</label><input className="form-input" type="number" min="1" value={bookForm.totalCopies} onChange={e => setBookForm(p => ({ ...p, totalCopies: e.target.value }))}/></div>
+                <div className="form-group"><label>ISBN</label><input className="form-input" value={bookForm.isbn} onChange={e => setBookForm(p => ({ ...p, isbn: e.target.value }))} placeholder="978-…"/></div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowBookModal(false)}>Չեղ.</button>
+              <button className="btn btn-primary" onClick={saveBook}>Պահել</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD MEMBER MODAL */}
+      {showMemberModal && (
+        <div className="modal-overlay" onClick={() => setShowMemberModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Գրանցել Անդամ</h3>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setShowMemberModal(false)}><X size={18}/></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group"><label>Անուն Ազգանուն *</label><input className="form-input" value={memberForm.name} onChange={e => setMemberForm(p => ({ ...p, name: e.target.value }))} placeholder="Անի Հովհաննիսյան"/></div>
+              <div className="form-group"><label>Էլ. Փոստ</label><input className="form-input" type="email" value={memberForm.email} onChange={e => setMemberForm(p => ({ ...p, email: e.target.value }))} placeholder="ani@example.am"/></div>
+              <div className="form-group"><label>Հեռախոս</label><input className="form-input" value={memberForm.phone} onChange={e => setMemberForm(p => ({ ...p, phone: e.target.value }))} placeholder="077 123456"/></div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowMemberModal(false)}>Չեղ.</button>
+              <button className="btn btn-primary" onClick={saveMember}>Գրանցել</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BORROW MODAL */}
+      {showBorrowModal && (
+        <div className="modal-overlay" onClick={() => setShowBorrowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Տալ Վարձույթ</h3>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setShowBorrowModal(false)}><X size={18}/></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Գիրք *</label>
+                <select className="form-input" value={borrowForm.bookId} onChange={e => setBorrowForm(p => ({ ...p, bookId: e.target.value }))}>
+                  <option value="">— Ընտրել գիրք —</option>
+                  {books.filter(b => b.availableCopies > 0).map(b => <option key={b.id} value={b.id}>{b.title} — {b.author} ({b.availableCopies} հատ)</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Անդամ *</label>
+                <select className="form-input" value={borrowForm.memberId} onChange={e => setBorrowForm(p => ({ ...p, memberId: e.target.value }))}>
+                  <option value="">— Ընտրել անդամ —</option>
+                  {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+              <div style={{ background: "#F7F3EC", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#7A6A55" }}>
+                Վերջնաժամ: {formatDate(dueDate())} (14 օր)
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowBorrowModal(false)}>Չեղ.</button>
+              <button className="btn btn-primary" onClick={saveBorrow}>Տալ</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RETURN MODAL */}
+      {showReturnModal && (
+        <div className="modal-overlay" onClick={() => setShowReturnModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Ընդունել Վերադարձ</h3>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setShowReturnModal(false)}><X size={18}/></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Ընտրել Վարձույթ *</label>
+                <select className="form-input" value={returnId} onChange={e => setReturnId(e.target.value)}>
+                  <option value="">— Ընտրել —</option>
+                  {activeBorrowings.map(b => (
+                    <option key={b.id} value={b.id}>{getBookTitle(b.bookId)} · {getMemberName(b.memberId)}{isOverdue(b.dueDate) ? " ⚠ ուշ" : ""}</option>
+                  ))}
+                </select>
+              </div>
+              {returnId && (() => {
+                const borrow = activeBorrowings.find(b => b.id === returnId);
+                return borrow && isOverdue(borrow.dueDate) ? (
+                  <div style={{ background: "#FDECEA", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#C0392B" }}>
+                    ⚠ Ուշացած — Վերջնաժամ {formatDate(borrow.dueDate)}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowReturnModal(false)}>Չեղ.</button>
+              <button className="btn btn-success" onClick={doReturn}><CheckCircle size={14}/> Ընդունել</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
- 
-function toast(m){
-  var t=document.getElementById('toast');
-  t.textContent=m;t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show');},2500);
-}
- 
-function getFiltered(){
-  return products.filter(function(p){
-    return (curFil==='all'||p.cat===curFil)&&(!curSearch||p.name.toLowerCase().indexOf(curSearch.toLowerCase())>=0||p.cat.toLowerCase().indexOf(curSearch.toLowerCase())>=0);
-  });
-}
- 
-function renderProducts(){
-  var g=document.getElementById('pgrid'),fp=getFiltered();
-  if(!fp.length){g.innerHTML='<p style="color:var(--text2);grid-column:1/-1;text-align:center;padding:2rem">Ոչ մի ապ.</p>';return;}
-  g.innerHTML=fp.map(function(p){
-    return '<div class="product-card">'
-      +(p.img?'<img class="product-img" src="'+p.img+'" onclick="openProd('+p.id+')" alt="'+p.name+'">'
-             :'<div class="product-img-ph" onclick="openProd('+p.id+')">'+(p.icon||'📦')+'</div>')
-      +'<div class="product-info">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-      +'<span class="product-cat">'+p.cat+'</span>'
-      +(p.badge==='new'?'<span class="badge badge-new">NEW</span>':p.badge==='sale'?'<span class="badge badge-sale">SALE</span>':'')
-      +'</div><div class="product-name">'+p.name+'</div>'
-      +'<div style="font-size:0.78rem;color:var(--text2)">'+(p.desc||'')+'</div>'
-      +'<div class="product-bottom">'
-      +'<span class="product-price">'+p.price.toLocaleString()+' ֏</span>'
-      +'<button class="add-btn" onclick="addToCart('+p.id+',event)">+</button>'
-      +'</div></div></div>';
-  }).join('');
-}
- 
-function filterP(cat,btn){
-  curFil=cat;
-  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');renderProducts();
-}
-function searchP(v){curSearch=v;renderProducts();}
- 
-function openProd(id){
-  var p=products.find(function(x){return x.id===id;});if(!p)return;
-  document.getElementById('prod-modal-body').innerHTML=
-    (p.img?'<img class="modal-img" src="'+p.img+'" alt="'+p.name+'">'
-          :'<div class="modal-img-ph">'+(p.icon||'📦')+'</div>')
-    +'<div class="modal-body">'
-    +'<div class="modal-cat">'+p.cat+'</div>'
-    +'<div class="modal-name">'+p.name+'</div>'
-    +'<div class="modal-desc">'+(p.desc||'')+'</div>'
-    +'<div class="modal-price">'+p.price.toLocaleString()+' ֏</div>'
-    +'<div class="modal-actions"><button class="btn-primary" onclick="addToCart('+p.id+');closeProdModal()">Զամ. ➕</button></div>'
-    +'</div>';
-  document.getElementById('prod-overlay').style.display='flex';
-}
-function closeProdModal(){document.getElementById('prod-overlay').style.display='none';}
- 
-function addToCart(id,e){
-  if(e)e.stopPropagation();
-  var p=products.find(function(x){return x.id===id;});if(!p)return;
-  var ex=cart.find(function(x){return x.id===id;});
-  if(ex)ex.qty++;else cart.push(Object.assign({},p,{qty:1}));
-  updCart();toast('➕ '+p.name);
-}
-function updCart(){
-  var t=cart.reduce(function(s,x){return s+x.qty;},0);
-  document.getElementById('cart-count').textContent=t;
-}
- 
-function renderCart(){
-  var c=document.getElementById('cart-container');
-  if(!cart.length){c.innerHTML='<div class="empty-state"><div class="icon">🛒</div><p style="font-size:1.1rem;margin-bottom:1rem">Զամ. դատ.</p><button class="btn-primary" onclick="showPage(\'shop\')">Գ. կ.</button></div>';return;}
-  var sub=cart.reduce(function(s,x){return s+x.price*x.qty;},0);
-  c.innerHTML=cart.map(function(item){
-    return '<div class="cart-item">'
-      +'<div class="cart-thumb">'+(item.img?'<img src="'+item.img+'" alt="'+item.name+'">':'<span>'+(item.icon||'📦')+'</span>')+'</div>'
-      +'<div class="cart-item-info"><div class="cart-item-name">'+item.name+'</div><div class="cart-item-cat">'+item.cat+'</div></div>'
-      +'<div class="cart-item-price">'+(item.price*item.qty).toLocaleString()+' ֏</div>'
-      +'<div class="qty-ctrl"><button class="qty-btn" onclick="chgQty('+item.id+',-1)">−</button><span class="qty-num">'+item.qty+'</span><button class="qty-btn" onclick="chgQty('+item.id+',1)">+</button></div>'
-      +'<button class="remove-btn" onclick="remFromCart('+item.id+')">✕</button></div>';
-  }).join('')
-  +'<div class="cart-summary">'
-  +'<div class="sum-row"><span>Ապ.</span><span>'+sub.toLocaleString()+' ֏</span></div>'
-  +'<div class="sum-row"><span>Ա.</span><span>1,500 ֏</span></div>'
-  +'<div class="sum-row"><span>Ընդ.</span><span>'+(sub+1500).toLocaleString()+' ֏</span></div>'
-  +'</div><button class="checkout-btn" onclick="showPage(\'checkout\')">Վ. →</button>';
-}
-function chgQty(id,d){
-  var item=cart.find(function(x){return x.id===id;});if(!item)return;
-  item.qty+=d;if(item.qty<=0)cart=cart.filter(function(x){return x.id!==id;});
-  updCart();renderCart();
-}
-function remFromCart(id){cart=cart.filter(function(x){return x.id!==id;});updCart();renderCart();toast('🗑');}
- 
-function renderCheckout(){
-  var sub=cart.reduce(function(s,x){return s+x.price*x.qty;},0);
-  document.getElementById('checkout-mini').innerHTML='<div class="om-title">Ամփ.</div>'
-    +cart.map(function(x){return '<div class="om-item"><span>'+(x.icon||'')+'  '+x.name+' ×'+x.qty+'</span><span>'+(x.price*x.qty).toLocaleString()+' ֏</span></div>';}).join('')
-    +'<div class="om-total"><span>Ընդ.</span><span>'+(sub+1500).toLocaleString()+' ֏</span></div>';
-}
-function selPay(el){
-  document.querySelectorAll('.pay-opt').forEach(function(x){x.classList.remove('active');});
-  el.classList.add('active');
-  document.getElementById('card-fields').style.display=el.textContent.indexOf('Քարտ')>=0?'block':'none';
-}
-function fmtCard(i){var v=i.value.replace(/\D/g,'').substring(0,16);i.value=v.match(/.{1,4}/g)?v.match(/.{1,4}/g).join(' '):v;}
- 
-function placeOrder(){
-  var fn=document.getElementById('fn').value.trim(),fl=document.getElementById('fl').value.trim();
-  var fa=document.getElementById('fa').value.trim(),fp=document.getElementById('fp').value.trim();
-  var fc=document.getElementById('fc').value.trim();
-  if(!fn||!fa||!fp){toast('⚠️ Պ. դ.');return;}
-  var total=cart.reduce(function(s,x){return s+x.price*x.qty;},0)+1500;
-  var oid='AV-'+(nextOrd++);
-  var oi=cart.map(function(x){return {name:x.name,qty:x.qty,price:x.price,icon:x.icon||'📦'};});
-  var order={id:oid,customer:fn+' '+fl,phone:fp,address:fa+(fc?' · '+fc:''),items:oi,itemsStr:oi.map(function(x){return x.name+' ×'+x.qty;}).join(', '),total:total,status:'pending',date:new Date().toLocaleDateString('hy-AM')};
-  orders.push(order);
-  document.getElementById('succ-id').textContent=oid;
-  document.getElementById('succ-name').textContent=order.customer;
-  document.getElementById('succ-phone').textContent=order.phone;
-  document.getElementById('succ-addr').textContent=order.address;
-  document.getElementById('succ-items').textContent=order.itemsStr;
-  document.getElementById('succ-total').textContent=total.toLocaleString()+' ֏';
-  document.getElementById('succ-sbadge').innerHTML=sbadge('pending');
-  document.getElementById('succ-qr-txt').textContent=oid;
-  var qrc=document.getElementById('order-qr-canvas');
-  qrc.innerHTML='';
-  new QRCode(qrc,{text:oid,width:180,height:180,colorDark:'#1a2e27',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
-  cart=[];updCart();showPage('success');
-}
- 
-function doLogin(){
-  if(document.getElementById('apass').value==='avelon2024'){showPage('admin');renderAdmin();}
-  else toast('❌ Սխ. ծ.');
-}
-function doLogout(){document.getElementById('apass').value='';showPage('shop');}
-function swTab(n,btn){
-  document.querySelectorAll('.admin-tab').forEach(function(t){t.classList.remove('active');});
-  document.querySelectorAll('.ap').forEach(function(p){p.classList.remove('active');});
-  btn.classList.add('active');document.getElementById('ap-'+n).classList.add('active');
-}
- 
-function sbadge(s){
-  var m={pending:'sp',confirmed:'sc',shipped:'ss',returned:'sr',done:'sd'};
-  var l={pending:'Սպ.',confirmed:'Հ.',shipped:'Ճ.',returned:'Վ.',done:'Հ.✓'};
-  return '<span class="sb '+(m[s]||'')+'">'+(l[s]||s)+'</span>';
-}
- 
-function renderAdmin(){
-  var rev=orders.reduce(function(s,o){return s+o.total;},0);
-  document.getElementById('sv').textContent=rev.toLocaleString()+' ֏';
-  document.getElementById('sp2').textContent=products.length;
-  document.getElementById('so').textContent=orders.length;
-  document.getElementById('spnd').textContent=orders.filter(function(o){return o.status==='pending';}).length;
-  var db=document.getElementById('dash-orders');
-  var last=orders.slice(-6).reverse();
-  db.innerHTML=last.length?last.map(function(o){return '<tr onclick="quickView(\''+o.id+'\')" style="cursor:pointer"><td style="color:var(--accent);font-weight:700">'+o.id+'</td><td>'+o.customer+'</td><td style="color:var(--text2);font-size:0.82rem">'+o.itemsStr.substring(0,25)+'</td><td>'+o.total.toLocaleString()+' ֏</td><td>'+sbadge(o.status)+'</td></tr>';}).join(''):'<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:1.5rem">Չ.</td></tr>';
-  var ob=document.getElementById('admin-ords');
-  ob.innerHTML=orders.length?orders.slice().reverse().map(function(o){return '<tr><td style="color:var(--accent);font-weight:700">'+o.id+'</td><td>'+o.customer+'</td><td style="color:var(--text2)">'+(o.phone||'—')+'</td><td style="color:var(--text2);font-size:0.82rem">'+o.itemsStr.substring(0,20)+'…</td><td>'+o.total.toLocaleString()+'</td><td>'+sbadge(o.status)+'</td><td><button class="btn-sm btn-blue" onclick="quickView(\''+o.id+'\')">👁</button></td></tr>';}).join(''):'<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:1.5rem">Չ.</td></tr>';
-  var pb=document.getElementById('admin-prods');
-  pb.innerHTML=products.map(function(p){return '<tr><td>'+(p.img?'<img src="'+p.img+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px">':'<span style="font-size:1.4rem">'+(p.icon||'📦')+'</span>')+'</td><td style="font-weight:600">'+p.name+'</td><td style="color:var(--accent);font-size:0.8rem">'+p.cat+'</td><td>'+p.price.toLocaleString()+' ֏</td><td><button class="btn-sm btn-danger" onclick="delProd('+p.id+')">🗑</button></td></tr>';}).join('');
-}
- 
-function lookupOrder(){showOrderDetail(document.getElementById('scan-input').value.trim().toUpperCase());}
-function liveSearch(val){
-  val=val.trim().toUpperCase();
-  var sug=document.getElementById('scan-suggestions');
-  if(val.length<2){sug.innerHTML='';document.getElementById('scan-result').innerHTML='';return;}
-  var m=orders.filter(function(o){return o.id.indexOf(val)>=0||o.customer.toUpperCase().indexOf(val)>=0||o.phone.indexOf(val)>=0;});
-  if(m.length===1&&m[0].id===val){showOrderDetail(val);sug.innerHTML='';return;}
-  sug.innerHTML=m.slice(0,5).map(function(o){return '<div onclick="document.getElementById(\'scan-input\').value=\''+o.id+'\';showOrderDetail(\''+o.id+'\')" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between"><div><span style="color:var(--accent);font-weight:700">'+o.id+'</span> — '+o.customer+'</div>'+sbadge(o.status)+'</div>';}).join('');
-}
- 
-function showOrderDetail(id){
-  var o=orders.find(function(x){return x.id===id;});
-  var r=document.getElementById('scan-result');
-  if(!o){r.innerHTML='<div style="color:var(--text2);padding:1.5rem;text-align:center;background:var(--bg3);border-radius:10px">⚠️ <b style="color:var(--accent)">'+id+'</b> չի գտ.</div>';return;}
-  var btns='';
-  if(o.status==='pending')btns='<button class="btn-primary" onclick="setOrd(\''+o.id+'\',\'confirmed\')">✓ Հ.</button><button class="btn-sm btn-danger" style="padding:10px 18px;font-size:0.9rem" onclick="setOrd(\''+o.id+'\',\'returned\')">✕ Մ.</button>';
-  if(o.status==='confirmed')btns='<button class="btn-sm btn-blue" style="padding:10px 18px;font-size:0.9rem" onclick="setOrd(\''+o.id+'\',\'shipped\')">→ Ճ.</button><button class="btn-sm btn-danger" style="padding:10px 18px;font-size:0.9rem" onclick="setOrd(\''+o.id+'\',\'returned\')">↩ Վ.</button>';
-  if(o.status==='shipped')btns='<button class="btn-primary" onclick="setOrd(\''+o.id+'\',\'done\')">✓ Հ.Հ.</button><button class="btn-sm btn-danger" style="padding:10px 18px;font-size:0.9rem" onclick="setOrd(\''+o.id+'\',\'returned\')">↩ Վ.</button>';
-  if(o.status==='done'||o.status==='returned')btns='<span style="color:var(--text2);font-size:0.9rem">Ա.</span>';
-  r.innerHTML='<div class="order-detail-card">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem"><h3>'+o.id+'</h3>'+sbadge(o.status)+'</div>'
-    +'<div class="detail-grid">'
-    +'<div class="detail-field"><label>Հաճ.</label><span>'+o.customer+'</span></div>'
-    +'<div class="detail-field"><label>Հեռ.</label><span style="color:var(--accent)">'+o.phone+'</span></div>'
-    +'<div class="detail-field" style="grid-column:1/-1"><label>Հ.</label><span>'+o.address+'</span></div>'
-    +'<div class="detail-field"><label>Ամ.</label><span>'+o.date+'</span></div>'
-    +'<div class="detail-field"><label>Ընդ.</label><span style="color:var(--accent);font-family:\'Playfair Display\',serif;font-size:1.1rem">'+o.total.toLocaleString()+' ֏</span></div>'
-    +'</div>'
-    +'<div class="detail-items">'
-    +o.items.map(function(x){return '<div class="detail-item-row"><span>'+x.icon+'  '+x.name+' × '+x.qty+'</span><span>'+(x.price*x.qty).toLocaleString()+' ֏</span></div>';}).join('')
-    +'<div class="detail-item-row"><span>Ա.</span><span>1,500 ֏</span></div>'
-    +'<div class="detail-item-row" style="font-weight:700"><span>Ընդ.</span><span style="color:var(--accent)">'+o.total.toLocaleString()+' ֏</span></div>'
-    +'</div>'
-    +'<div class="detail-actions">'+btns+'</div>'
-    +'</div>';
-}
- 
-function quickView(id){
-  document.querySelectorAll('.admin-tab').forEach(function(t){t.classList.remove('active');});
-  document.querySelectorAll('.ap').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.admin-tab')[1].classList.add('active');
-  document.getElementById('ap-scan').classList.add('active');
-  document.getElementById('scan-input').value=id;
-  document.getElementById('scan-suggestions').innerHTML='';
-  showOrderDetail(id);
-}
- 
-function setOrd(id,status){
-  var o=orders.find(function(x){return x.id===id;});if(!o)return;
-  o.status=status;renderAdmin();showOrderDetail(id);
-  var m={confirmed:'✅ Հ.',shipped:'🚚 Ճ.',done:'✓ Հ.✓',returned:'↩ Վ.'};
-  toast(m[status]||'✅');
-}
- 
-function handleUpload(input){
-  var file=input.files[0];if(!file)return;
-  var r=new FileReader();
-  r.onload=function(e){upImg=e.target.result;var pv=document.getElementById('img-preview');pv.src=upImg;pv.style.display='block';document.getElementById('uph').style.display='none';};
-  r.readAsDataURL(file);
-}
-function prevUrl(input){
-  var url=input.value.trim();if(!url)return;upImg=url;
-  var pv=document.getElementById('img-preview');pv.src=url;pv.style.display='block';document.getElementById('uph').style.display='none';
-}
-function addProduct(){
-  var name=document.getElementById('nname').value.trim(),price=parseInt(document.getElementById('nprice').value);
-  if(!name||!price){toast('⚠️ Ա+Գ');return;}
-  products.push({id:nextId++,name:name,cat:document.getElementById('ncat').value,price:price,icon:document.getElementById('nicon').value.trim()||'📦',img:upImg||document.getElementById('niurl').value.trim()||'',desc:document.getElementById('ndesc').value.trim(),badge:'new'});
-  renderProducts();renderAdmin();
-  ['nname','nprice','nicon','ndesc','niurl'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('img-preview').style.display='none';
-  document.getElementById('uph').style.display='block';
-  upImg='';toast('✅ ➕');
-}
-function delProd(id){
-  if(!confirm('Ջ.?'))return;
-  products=products.filter(function(p){return p.id!==id;});
-  cart=cart.filter(function(c){return c.id!==id;});
-  updCart();renderAdmin();renderProducts();toast('🗑');
-}
- 
-renderProducts();
-</script>
-</body>
-</html>
